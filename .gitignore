@@ -1,0 +1,17 @@
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+build/
+dist/
+*.spec
+.idea/
+.vscode/
+chroma_db/
+mongo_data/
+papers.json
+*.log
