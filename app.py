@@ -35,17 +35,27 @@ st.markdown("""
 
 # --- CACHED AI MODELS ---
 @st.cache_resource
+# (Keep everything at the top same, just update the load_models function)
+
+@st.cache_resource
 def load_models():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     embed_model = SentenceTransformer(MODEL_NAME, device=device)
-    summ_pipe = pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
+    
+    # Try loading summarizer, fallback to None if it fails
+    try:
+        summ_pipe = pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
+    except Exception as e:
+        st.warning(f"Note: Local summarizer fallback mode active.")
+        summ_pipe = None
+        
     try:
         nlp = spacy.load(NER_MODEL)
     except:
         nlp = None
     
     # Setup Gemini
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
         gemini = genai.GenerativeModel('gemini-1.5-flash')
@@ -53,8 +63,6 @@ def load_models():
         gemini = None
         
     return embed_model, summ_pipe, nlp, gemini
-
-embed_model, summ_pipe, nlp, gemini = load_models()
 
 # --- DATA & INDEXING ---
 @st.cache_data
@@ -168,3 +176,5 @@ if "selected_paper" in st.session_state:
     
     st.write(f"**Authors:** {p['authors']}")
     st.write(f"**Abstract:** {p['abstract']}")
+
+
