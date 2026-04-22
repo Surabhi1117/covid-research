@@ -40,7 +40,14 @@ def load_models():
     embed_model = SentenceTransformer(MODEL_NAME, device=device)
     
     # Setup Gemini
-    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+    try:
+        api_key = st.secrets.get("GEMINI_API_KEY")
+    except Exception:
+        api_key = None
+    
+    if not api_key:
+        api_key = os.getenv("GEMINI_API_KEY")
+
     if api_key:
         genai.configure(api_key=api_key)
         gemini = genai.GenerativeModel('gemini-1.5-flash-8b')
