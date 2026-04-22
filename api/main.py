@@ -153,7 +153,7 @@ PAPER TEXT:
             return {"filename": file.filename, "analysis": response.text}
         except Exception as e:
             if "404" in str(e) or "not found" in str(e).lower():
-                raise HTTPException(status_code=404, detail="The AI model 'gemini-flash-latest' was not found. Please check your API key and model access.")
+                raise HTTPException(status_code=404, detail="The AI model 'gemini-1.5-flash-8b' was not found. Please check your API key and model access.")
             raise e
         
     except HTTPException as he:
@@ -188,7 +188,7 @@ async def paraphrase_text(text: str, mode: str = "Standard", intensity: str = "M
                 raise e
     except Exception as e:
         if "404" in str(e) or "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail="The AI model 'gemini-2.0-flash' was not found.")
+            raise HTTPException(status_code=404, detail="The AI model 'gemini-1.5-flash-8b' was not found.")
         raise HTTPException(status_code=500, detail=f"Paraphrasing error: {str(e)}")
 
 if __name__ == "__main__":
