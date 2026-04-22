@@ -54,8 +54,8 @@ def load_models():
     api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
-        # Use gemini-2.0-flash for better performance and potential quota freshness
-        gemini = genai.GenerativeModel('gemini-2.0-flash')
+        # Use gemini-1.5-flash-8b for maximum availability on free tier
+        gemini = genai.GenerativeModel('gemini-1.5-flash-8b')
     else:
         gemini = None
         

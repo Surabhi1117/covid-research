@@ -48,7 +48,7 @@ def load_models():
     api_key = os.getenv("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
-        gemini = genai.GenerativeModel('gemini-2.0-flash')
+        gemini = genai.GenerativeModel('gemini-1.5-flash-8b')
     else:
         gemini = None
         

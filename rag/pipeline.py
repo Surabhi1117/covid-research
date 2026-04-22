@@ -11,7 +11,7 @@ class RAGPipeline:
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash')
+            self.model = genai.GenerativeModel('gemini-1.5-flash-8b')
         else:
             self.model = None
             print("Warning: GEMINI_API_KEY not found. RAG functionality will be disabled.")
