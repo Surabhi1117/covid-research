@@ -215,22 +215,32 @@ elif st.session_state.app_mode == "upload":
                     st.download_button("Download Analysis", analysis_data["analysis"], file_name=f"analysis_{uploaded_file.name}.txt")
 
 elif st.session_state.app_mode == "paraphrase":
-    st.title("AI Paraphraser")
-    st.write("Rewrite scientific text while maintaining accuracy and meaning.")
+    st.title("🚀 QuillBot-style AI Paraphraser")
+    st.write("Professional-grade rewriting tool for scientific and academic text.")
     
-    text_to_paraphrase = st.text_area("Enter text to paraphrase", height=200, placeholder="Paste your scientific paragraph here...")
-    style = st.select_slider("Select Tone/Style", options=["Simplified", "Balanced", "Professional"], value="Balanced")
+    col_ctrl1, col_ctrl2 = st.columns([0.7, 0.3])
+    with col_ctrl1:
+        mode = st.selectbox("Select Mode", ["Standard", "Fluency", "Formal", "Simple", "Creative", "Expand", "Shorten"])
+    with col_ctrl2:
+        intensity = st.select_slider("Synonym Intensity", options=["Low", "Medium", "High"], value="Medium")
+    
+    text_to_paraphrase = st.text_area("Original Text", height=200, placeholder="Paste your text here...")
     
     if text_to_paraphrase:
         if st.button("Paraphrase Text"):
-            with st.spinner(f"Paraphrasing in {style} tone..."):
-                data = paraphrase_text(text_to_paraphrase, style)
+            with st.spinner(f"Paraphrasing in {mode} mode..."):
+                data = safe_api_call("POST", "/paraphrase", params={"text": text_to_paraphrase, "mode": mode, "intensity": intensity})
                 if data and "paraphrased" in data:
                     st.success("Paraphrasing complete!")
-                    st.markdown("---")
-                    st.markdown("### Paraphrased Versions")
-                    st.markdown(data["paraphrased"])
-                    st.download_button("Download Paraphrased Text", data["paraphrased"], file_name="paraphrased_text.md")
+                    st.divider()
+                    col_res1, col_res2 = st.columns(2)
+                    with col_res1:
+                        st.subheader("Original")
+                        st.info(text_to_paraphrase)
+                    with col_res2:
+                        st.subheader(f"Paraphrased ({mode})")
+                        st.success(data["paraphrased"])
+                        st.download_button("Download Result", data["paraphrased"], file_name=f"paraphrased_{mode}.md")
 
 # Paper Details Dialog/View
 if "selected_paper" in st.session_state:

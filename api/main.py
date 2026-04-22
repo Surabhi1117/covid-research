@@ -162,14 +162,22 @@ PAPER TEXT:
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
 
 @app.post("/paraphrase")
-async def paraphrase_text(text: str, style: str = "Balanced"):
+async def paraphrase_text(text: str, mode: str = "Standard", intensity: str = "Medium"):
     """
-    Paraphrase text in a specific style using Gemini.
+    Paraphrase text in a specific QuillBot-like mode using Gemini.
     """
-    prompt = f"Paraphrase the following scientific text in a {style} tone. Provide 2 distinct versions:\n\n{text}"
+    intensity_map = {"Low": "minimal changes to vocabulary", "Medium": "moderate use of synonyms", "High": "significant vocabulary overhaul"}
+    prompt = f"""
+    TASK: Paraphrase the text below.
+    MODE: {mode}
+    INTENSITY: {intensity} ({intensity_map.get(intensity, 'moderate')})
+    
+    INSTRUCTIONS: Maintain scientific accuracy and provide 2 distinct versions.
+    TEXT: {text}
+    """
     try:
         response = rag_pipeline.model.generate_content(prompt)
-        return {"original": text, "style": style, "paraphrased": response.text}
+        return {"original": text, "mode": mode, "paraphrased": response.text}
     except Exception as e:
         if "404" in str(e) or "not found" in str(e).lower():
             raise HTTPException(status_code=404, detail="The AI model 'gemini-flash-latest' was not found.")

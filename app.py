@@ -180,19 +180,62 @@ elif st.session_state.app_mode == "upload" and gemini:
                 st.error(f"AI Generation Error: {e}")
 
 elif st.session_state.app_mode == "paraphrase" and gemini:
-    st.title("AI Paraphraser")
-    st.write("Rewrite scientific text while maintaining accuracy and meaning.")
+    st.title("🚀 QuillBot-style AI Paraphraser")
+    st.write("Professional-grade rewriting tool for scientific and academic text.")
     
-    text_to_paraphrase = st.text_area("Enter text to paraphrase", height=200, placeholder="Paste your scientific paragraph here...")
-    style = st.select_slider("Select Style", options=["Simplified", "Balanced", "Professional"])
+    col_ctrl1, col_ctrl2 = st.columns([0.7, 0.3])
+    with col_ctrl1:
+        mode = st.selectbox("Select Mode", ["Standard", "Fluency", "Formal", "Simple", "Creative", "Expand", "Shorten"])
+    with col_ctrl2:
+        intensity = st.select_slider("Synonym Intensity", options=["Low", "Medium", "High"], value="Medium")
     
-    if text_to_paraphrase and st.button("Paraphrase"):
-        prompt = f"Paraphrase the following scientific text in a {style} tone. Provide 2 distinct versions:\n\n{text_to_paraphrase}"
-        with st.spinner("Paraphrasing..."):
+    text_to_paraphrase = st.text_area("Original Text", height=200, placeholder="Paste your text here...")
+    
+    if text_to_paraphrase and st.button("Paraphrase Now"):
+        # Construct a sophisticated prompt based on mode and intensity
+        intensity_map = {"Low": "minimal changes to vocabulary", "Medium": "moderate use of synonyms", "High": "significant vocabulary overhaul"}
+        mode_instructions = {
+            "Standard": "Balance meaning and structural changes.",
+            "Fluency": "Ensure the text flows naturally and corrects any awkward phrasing.",
+            "Formal": "Use academic and professional language suitable for a research paper.",
+            "Simple": "Make the text easier to understand while keeping the core facts.",
+            "Creative": "Completely restructure the sentences for a fresh perspective.",
+            "Expand": "Add detail and depth to the sentences without changing the meaning.",
+            "Shorten": "Concisely summarize the text into its most essential form."
+        }
+        
+        prompt = f"""
+        TASK: Paraphrase the text below.
+        MODE: {mode} ({mode_instructions[mode]})
+        INTENSITY: {intensity} ({intensity_map[intensity]})
+        
+        INSTRUCTIONS:
+        1. Maintain 100% scientific accuracy.
+        2. Change sentence structure significantly.
+        3. Provide exactly TWO distinct paraphrased versions.
+        
+        TEXT:
+        {text_to_paraphrase}
+        
+        PARAPHRASED VERSIONS:
+        """
+        
+        with st.spinner(f"Paraphrasing in {mode} mode..."):
             try:
                 response = gemini.generate_content(prompt)
-                st.markdown("### Paraphrased Versions")
-                st.markdown(response.text)
+                
+                st.divider()
+                col_res1, col_res2 = st.columns(2)
+                
+                with col_res1:
+                    st.subheader("Original")
+                    st.info(text_to_paraphrase)
+                
+                with col_res2:
+                    st.subheader(f"Paraphrased ({mode})")
+                    st.success(response.text)
+                    st.download_button("Download Result", response.text, file_name=f"paraphrased_{mode}.txt")
+                    
             except Exception as e:
                 st.error(f"Error: {e}")
 

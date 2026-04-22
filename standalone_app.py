@@ -173,22 +173,44 @@ elif st.session_state.app_mode == "upload" and gemini:
             else:
                 st.error(f"AI Generation Error: {e}")
 
-elif st.session_state.app_mode == "paraphrase" and gemini:
-    st.title("AI Paraphraser")
-    st.write("Rewrite scientific text while maintaining accuracy and meaning.")
+elif st.session_state.app_mode == "paraphrase":
+    st.title("🚀 QuillBot-style AI Paraphraser")
+    st.write("Professional-grade rewriting tool for scientific and academic text.")
     
-    text_to_paraphrase = st.text_area("Enter text to paraphrase", height=200, placeholder="Paste your scientific paragraph here...")
-    style = st.select_slider("Select Style", options=["Simplified", "Balanced", "Professional"])
+    col_ctrl1, col_ctrl2 = st.columns([0.7, 0.3])
+    with col_ctrl1:
+        mode = st.selectbox("Select Mode", ["Standard", "Fluency", "Formal", "Simple", "Creative", "Expand", "Shorten"])
+    with col_ctrl2:
+        intensity = st.select_slider("Synonym Intensity", options=["Low", "Medium", "High"], value="Medium")
     
-    if text_to_paraphrase and st.button("Paraphrase"):
-        prompt = f"Paraphrase the following scientific text in a {style} tone. Provide 2 distinct versions:\n\n{text_to_paraphrase}"
-        with st.spinner("Paraphrasing..."):
-            try:
-                response = gemini.generate_content(prompt)
-                st.markdown("### Paraphrased Versions")
-                st.markdown(response.text)
-            except Exception as e:
-                st.error(f"Error: {e}")
+    text_to_paraphrase = st.text_area("Original Text", height=200, placeholder="Paste your text here...")
+    
+    if text_to_paraphrase:
+        if st.button("Paraphrase Text"):
+            with st.spinner(f"Paraphrasing in {mode} mode..."):
+                try:
+                    # In this self-contained context, we call the model directly
+                    intensity_map = {"Low": "minimal changes to vocabulary", "Medium": "moderate use of synonyms", "High": "significant vocabulary overhaul"}
+                    prompt = f"""
+                    TASK: Paraphrase the text below.
+                    MODE: {mode}
+                    INTENSITY: {intensity} ({intensity_map[intensity]})
+                    INSTRUCTIONS: Maintain 100% scientific accuracy, change sentence structure significantly, and provide TWO versions.
+                    TEXT: {text_to_paraphrase}
+                    """
+                    response = gemini.generate_content(prompt)
+                    st.success("Paraphrasing complete!")
+                    st.divider()
+                    col_res1, col_res2 = st.columns(2)
+                    with col_res1:
+                        st.subheader("Original")
+                        st.info(text_to_paraphrase)
+                    with col_res2:
+                        st.subheader(f"Paraphrased ({mode})")
+                        st.success(response.text)
+                        st.download_button("Download Result", response.text, file_name=f"paraphrased_{mode}.md")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
 if "selected_paper" in st.session_state:
     p = papers_dict[st.session_state.selected_paper]
