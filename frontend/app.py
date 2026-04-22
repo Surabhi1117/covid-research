@@ -95,6 +95,9 @@ def upload_and_analyze(file):
     files = {"file": (file.name, file.getvalue(), "application/pdf")}
     return safe_api_call("POST", "/analyze", files=files)
 
+def paraphrase_text(text, style):
+    return safe_api_call("POST", "/paraphrase", params={"text": text, "style": style})
+
 # Sidebar
 st.sidebar.title("🧬 COVID-19 AI Research")
 st.sidebar.info("Accelerating scientific discovery with AI.")
@@ -113,6 +116,8 @@ if st.sidebar.button("🔍 Search Papers"):
     st.session_state.app_mode = "search"
 if st.sidebar.button("📝 Draft Research Paper"):
     st.session_state.app_mode = "draft"
+if st.sidebar.button("✍️ Paraphraser"):
+    st.session_state.app_mode = "paraphrase"
 if st.sidebar.button("📁 Upload & Analyze PDF"):
     st.session_state.app_mode = "upload"
 
@@ -208,6 +213,24 @@ elif st.session_state.app_mode == "upload":
                     st.markdown("---")
                     st.markdown(analysis_data["analysis"])
                     st.download_button("Download Analysis", analysis_data["analysis"], file_name=f"analysis_{uploaded_file.name}.txt")
+
+elif st.session_state.app_mode == "paraphrase":
+    st.title("AI Paraphraser")
+    st.write("Rewrite scientific text while maintaining accuracy and meaning.")
+    
+    text_to_paraphrase = st.text_area("Enter text to paraphrase", height=200, placeholder="Paste your scientific paragraph here...")
+    style = st.select_slider("Select Tone/Style", options=["Simplified", "Balanced", "Professional"], value="Balanced")
+    
+    if text_to_paraphrase:
+        if st.button("Paraphrase Text"):
+            with st.spinner(f"Paraphrasing in {style} tone..."):
+                data = paraphrase_text(text_to_paraphrase, style)
+                if data and "paraphrased" in data:
+                    st.success("Paraphrasing complete!")
+                    st.markdown("---")
+                    st.markdown("### Paraphrased Versions")
+                    st.markdown(data["paraphrased"])
+                    st.download_button("Download Paraphrased Text", data["paraphrased"], file_name="paraphrased_text.md")
 
 # Paper Details Dialog/View
 if "selected_paper" in st.session_state:

@@ -161,6 +161,20 @@ PAPER TEXT:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
 
+@app.post("/paraphrase")
+async def paraphrase_text(text: str, style: str = "Balanced"):
+    """
+    Paraphrase text in a specific style using Gemini.
+    """
+    prompt = f"Paraphrase the following scientific text in a {style} tone. Provide 2 distinct versions:\n\n{text}"
+    try:
+        response = rag_pipeline.model.generate_content(prompt)
+        return {"original": text, "style": style, "paraphrased": response.text}
+    except Exception as e:
+        if "404" in str(e) or "not found" in str(e).lower():
+            raise HTTPException(status_code=404, detail="The AI model 'gemini-flash-latest' was not found.")
+        raise HTTPException(status_code=500, detail=f"Paraphrasing error: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

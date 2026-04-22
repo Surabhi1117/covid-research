@@ -104,6 +104,7 @@ st.sidebar.divider()
 st.sidebar.subheader("Tools")
 if st.sidebar.button("🔍 Search Papers"): st.session_state.app_mode = "search"
 if st.sidebar.button("📝 Draft Research Paper"): st.session_state.app_mode = "draft"
+if st.sidebar.button("✍️ Paraphraser"): st.session_state.app_mode = "paraphrase"
 if st.sidebar.button("📁 Upload & Analyze PDF"): st.session_state.app_mode = "upload"
 
 if "app_mode" not in st.session_state: st.session_state.app_mode = "search"
@@ -171,6 +172,23 @@ elif st.session_state.app_mode == "upload" and gemini:
                 st.error("Error: The AI model 'gemini-flash-latest' was not found. Please check your API key and model access.")
             else:
                 st.error(f"AI Generation Error: {e}")
+
+elif st.session_state.app_mode == "paraphrase" and gemini:
+    st.title("AI Paraphraser")
+    st.write("Rewrite scientific text while maintaining accuracy and meaning.")
+    
+    text_to_paraphrase = st.text_area("Enter text to paraphrase", height=200, placeholder="Paste your scientific paragraph here...")
+    style = st.select_slider("Select Style", options=["Simplified", "Balanced", "Professional"])
+    
+    if text_to_paraphrase and st.button("Paraphrase"):
+        prompt = f"Paraphrase the following scientific text in a {style} tone. Provide 2 distinct versions:\n\n{text_to_paraphrase}"
+        with st.spinner("Paraphrasing..."):
+            try:
+                response = gemini.generate_content(prompt)
+                st.markdown("### Paraphrased Versions")
+                st.markdown(response.text)
+            except Exception as e:
+                st.error(f"Error: {e}")
 
 if "selected_paper" in st.session_state:
     p = papers_dict[st.session_state.selected_paper]
