@@ -54,12 +54,24 @@ def load_models():
     api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
-        # Use 'gemini-flash-latest' for maximum compatibility with current API environment
-        gemini = genai.GenerativeModel('gemini-flash-latest')
+        # Use gemini-2.0-flash for better performance and potential quota freshness
+        gemini = genai.GenerativeModel('gemini-2.0-flash')
     else:
         gemini = None
         
     return embed_model, summ_pipe, nlp, gemini
+
+import time
+def safe_generate(model, prompt):
+    """Generate content with automatic retries for rate limits."""
+    for attempt in range(3):
+        try:
+            return model.generate_content(prompt)
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise e
 
 embed_model, summ_pipe, nlp, gemini = load_models()
 
@@ -127,7 +139,7 @@ if st.session_state.app_mode == "search":
             context = "\n".join([f"- {p['title']}: {p['abstract'][:300]}" for p in results[:5]])
             prompt = f"Question: {query}\n\nContext:\n{context}\n\nAnswer concisely with citations."
             try:
-                answer = gemini.generate_content(prompt)
+                answer = safe_generate(gemini, prompt)
                 st.info(answer.text)
             except Exception as e:
                 if "404" in str(e) or "not found" in str(e).lower():
@@ -155,7 +167,7 @@ elif st.session_state.app_mode == "draft" and gemini:
         context = "\n".join([f"[{i}] {p['title']}: {p['abstract']}" for i, p in enumerate(results, 1)])
         prompt = f"Write a full research paper draft on '{topic}' using this context:\n{context}"
         try:
-            draft = gemini.generate_content(prompt)
+            draft = safe_generate(gemini, prompt)
             st.markdown(draft.text)
         except Exception as e:
             if "404" in str(e) or "not found" in str(e).lower():
@@ -171,7 +183,7 @@ elif st.session_state.app_mode == "upload" and gemini:
         text = "".join([p.extract_text() for p in reader.pages])[:30000]
         prompt = f"Summarize and list key points for this paper:\n{text}"
         try:
-            analysis = gemini.generate_content(prompt)
+            analysis = safe_generate(gemini, prompt)
             st.markdown(analysis.text)
         except Exception as e:
             if "404" in str(e) or "not found" in str(e).lower():
@@ -222,7 +234,7 @@ elif st.session_state.app_mode == "paraphrase" and gemini:
         
         with st.spinner(f"Paraphrasing in {mode} mode..."):
             try:
-                response = gemini.generate_content(prompt)
+                response = safe_generate(gemini, prompt)
                 
                 st.divider()
                 col_res1, col_res2 = st.columns(2)

@@ -1,6 +1,7 @@
 import os
 import google.generativeai as genai
 from typing import List, Dict, Any
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,8 +11,7 @@ class RAGPipeline:
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            # Use the correct model identifier
-            self.model = genai.GenerativeModel('gemini-flash-latest')
+            self.model = genai.GenerativeModel('gemini-2.0-flash')
         else:
             self.model = None
             print("Warning: GEMINI_API_KEY not found. RAG functionality will be disabled.")
@@ -49,8 +49,16 @@ SCIENTIFIC ANSWER:
 """
         
         try:
-            response = self.model.generate_content(prompt)
-            return response.text
+            # Simple retry loop for rate limits
+            for attempt in range(3):
+                try:
+                    response = self.model.generate_content(prompt)
+                    return response.text
+                except Exception as e:
+                    if "429" in str(e) and attempt < 2:
+                        time.sleep(2 * (attempt + 1))
+                        continue
+                    raise e
         except Exception as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 return "Error: The AI model 'gemini-flash-latest' was not found. Please check your API key and model access."
@@ -90,8 +98,16 @@ CONTEXT:
 SCIENTIFIC DRAFT:
 """
         try:
-            response = self.model.generate_content(prompt)
-            return response.text
+            # Simple retry loop for rate limits
+            for attempt in range(3):
+                try:
+                    response = self.model.generate_content(prompt)
+                    return response.text
+                except Exception as e:
+                    if "429" in str(e) and attempt < 2:
+                        time.sleep(2 * (attempt + 1))
+                        continue
+                    raise e
         except Exception as e:
             if "404" in str(e) or "not found" in str(e).lower():
                 return "Error: The AI model 'gemini-1.5-flash' was not found. Please check your API key and model access."

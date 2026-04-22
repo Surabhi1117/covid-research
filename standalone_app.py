@@ -48,11 +48,23 @@ def load_models():
     api_key = os.getenv("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
-        gemini = genai.GenerativeModel('gemini-flash-latest')
+        gemini = genai.GenerativeModel('gemini-2.0-flash')
     else:
         gemini = None
         
     return embed_model, summ_pipe, nlp, gemini
+
+import time
+def safe_generate(model, prompt):
+    """Generate content with automatic retries for rate limits."""
+    for attempt in range(3):
+        try:
+            return model.generate_content(prompt)
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise e
 
 embed_model, summ_pipe, nlp, gemini = load_models()
 
@@ -198,7 +210,7 @@ elif st.session_state.app_mode == "paraphrase":
                     INSTRUCTIONS: Maintain 100% scientific accuracy, change sentence structure significantly, and provide TWO versions.
                     TEXT: {text_to_paraphrase}
                     """
-                    response = gemini.generate_content(prompt)
+                    response = safe_generate(gemini, prompt)
                     st.success("Paraphrasing complete!")
                     st.divider()
                     col_res1, col_res2 = st.columns(2)

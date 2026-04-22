@@ -176,11 +176,19 @@ async def paraphrase_text(text: str, mode: str = "Standard", intensity: str = "M
     TEXT: {text}
     """
     try:
-        response = rag_pipeline.model.generate_content(prompt)
-        return {"original": text, "mode": mode, "paraphrased": response.text}
+        # Retry loop
+        for attempt in range(3):
+            try:
+                response = rag_pipeline.model.generate_content(prompt)
+                return {"original": text, "mode": mode, "paraphrased": response.text}
+            except Exception as e:
+                if "429" in str(e) and attempt < 2:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                raise e
     except Exception as e:
         if "404" in str(e) or "not found" in str(e).lower():
-            raise HTTPException(status_code=404, detail="The AI model 'gemini-flash-latest' was not found.")
+            raise HTTPException(status_code=404, detail="The AI model 'gemini-2.0-flash' was not found.")
         raise HTTPException(status_code=500, detail=f"Paraphrasing error: {str(e)}")
 
 if __name__ == "__main__":
