@@ -13,10 +13,10 @@ from pypdf import PdfReader
 import io
 from dotenv import load_dotenv
 
-# Load local .env if it exists
 load_dotenv()
 
 # --- CONFIGURATION ---
+ST_PORT = 8501
 MODEL_NAME = "all-MiniLM-L6-v2"
 SUMM_MODEL = "facebook/bart-large-cnn"
 NER_MODEL = "en_ner_bc5cdr_md"
@@ -38,23 +38,16 @@ st.markdown("""
 def load_models():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     embed_model = SentenceTransformer(MODEL_NAME, device=device)
-    
-    # Try loading summarization model (fail gracefully on low-memory environments)
-    try:
-        summ_pipe = pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
-    except Exception:
-        summ_pipe = None
-        
+    summ_pipe = pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
     try:
         nlp = spacy.load(NER_MODEL)
-    except Exception:
+    except:
         nlp = None
     
-    # Setup Gemini - Try secrets (Cloud) then env (Local)
-    api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+    # Setup Gemini
+    api_key = os.getenv("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
-        # Use 'gemini-flash-latest' for maximum compatibility with current API environment
         gemini = genai.GenerativeModel('gemini-flash-latest')
     else:
         gemini = None
@@ -71,14 +64,14 @@ def load_papers():
 
 @st.cache_resource
 def get_vector_db(_papers):
-    client = chromadb.Client() 
+    client = chromadb.Client() # In-memory for Cloud
     collection = client.create_collection(name="papers")
     
     texts = [p['abstract'] for p in _papers if p.get('abstract')]
     ids = [p['cord_uid'] for p in _papers if p.get('abstract')]
     metadatas = [{"title": p['title'], "doi": p.get('doi', ''), "url": p.get('url', '')} for p in _papers if p.get('abstract')]
     
-    embeddings = embed_model.encode(texts, show_progress_bar=False).tolist()
+    embeddings = embed_model.encode(texts, show_progress_bar=True).tolist()
     collection.add(ids=ids, embeddings=embeddings, documents=texts, metadatas=metadatas)
     return collection
 
@@ -88,6 +81,7 @@ papers_dict = {p['cord_uid']: p for p in papers_data}
 
 # --- SEARCH LOGIC ---
 def hybrid_search(query, limit=10):
+    # Semantic Search
     query_emb = embed_model.encode([query]).tolist()
     sem_results = vector_index.query(query_embeddings=query_emb, n_results=limit*2)
     
@@ -104,7 +98,7 @@ def hybrid_search(query, limit=10):
 
 # --- UI LOGIC ---
 st.sidebar.title("🧬 COVID-19 AI Research")
-st.sidebar.info("Accelerating scientific discovery.")
+st.sidebar.info("Self-Contained Deployment Version")
 
 st.sidebar.divider()
 st.sidebar.subheader("Tools")
@@ -116,7 +110,7 @@ if "app_mode" not in st.session_state: st.session_state.app_mode = "search"
 
 if st.session_state.app_mode == "search":
     st.title("Search & Retrieval Engine")
-    query = st.text_input("Ask a scientific question", placeholder="e.g., neurological impact of long COVID")
+    query = st.text_input("Ask a scientific question", placeholder="e.g., vaccine acceptance in Bangladesh")
     
     if query:
         results = hybrid_search(query)
@@ -186,10 +180,9 @@ if "selected_paper" in st.session_state:
         del st.session_state.selected_paper
         st.rerun()
     
-    if summ_pipe:
-        with st.spinner("Summarizing..."):
-            summ = summ_pipe(p['abstract'][:4000], max_length=150, min_length=40)[0]['summary_text']
-            st.success(f"### AI Summary\n{summ}")
+    with st.spinner("Summarizing..."):
+        summ = summ_pipe(p['abstract'][:4000], max_length=150, min_length=40)[0]['summary_text']
+        st.success(f"### AI Summary\n{summ}")
     
     st.write(f"**Authors:** {p['authors']}")
     st.write(f"**Abstract:** {p['abstract']}")
