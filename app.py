@@ -39,27 +39,20 @@ def load_models():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     embed_model = SentenceTransformer(MODEL_NAME, device=device)
     
-    # Try loading summarization model (fail gracefully on low-memory environments)
-    try:
-        summ_pipe = pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
-    except Exception:
-        summ_pipe = None
-        
-    try:
-        nlp = spacy.load(NER_MODEL)
-    except Exception:
-        nlp = None
-    
-    # Setup Gemini - Try secrets (Cloud) then env (Local)
+    # Setup Gemini
     api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if api_key:
         genai.configure(api_key=api_key)
-        # Use gemini-1.5-flash-8b for maximum availability on free tier
         gemini = genai.GenerativeModel('gemini-1.5-flash-8b')
     else:
         gemini = None
         
-    return embed_model, summ_pipe, nlp, gemini
+    return embed_model, gemini
+
+@st.cache_resource
+def load_summarizer():
+    """Lazy load the summarizer to save memory at startup."""
+    return pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
 
 import time
 def safe_generate(model, prompt):
@@ -73,7 +66,7 @@ def safe_generate(model, prompt):
                 continue
             raise e
 
-embed_model, summ_pipe, nlp, gemini = load_models()
+embed_model, gemini = load_models()
 
 # --- DATA & INDEXING ---
 @st.cache_data
@@ -259,10 +252,10 @@ if "selected_paper" in st.session_state:
         del st.session_state.selected_paper
         st.rerun()
     
-    if summ_pipe:
-        with st.spinner("Summarizing..."):
-            summ = summ_pipe(p['abstract'][:4000], max_length=150, min_length=40)[0]['summary_text']
-            st.success(f"### AI Summary\n{summ}")
+    with st.spinner("Summarizing..."):
+        summ_pipe = load_summarizer()
+        summ = summ_pipe(p['abstract'][:4000], max_length=150, min_length=40)[0]['summary_text']
+        st.success(f"### AI Summary\n{summ}")
     
     st.write(f"**Authors:** {p['authors']}")
     st.write(f"**Abstract:** {p['abstract']}")

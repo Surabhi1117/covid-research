@@ -38,11 +38,6 @@ st.markdown("""
 def load_models():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     embed_model = SentenceTransformer(MODEL_NAME, device=device)
-    summ_pipe = pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
-    try:
-        nlp = spacy.load(NER_MODEL)
-    except:
-        nlp = None
     
     # Setup Gemini
     api_key = os.getenv("GEMINI_API_KEY")
@@ -52,7 +47,12 @@ def load_models():
     else:
         gemini = None
         
-    return embed_model, summ_pipe, nlp, gemini
+    return embed_model, gemini
+
+@st.cache_resource
+def load_summarizer():
+    """Lazy load the summarizer to save memory at startup."""
+    return pipeline("summarization", model=SUMM_MODEL, device=0 if torch.cuda.is_available() else -1)
 
 import time
 def safe_generate(model, prompt):
@@ -66,7 +66,7 @@ def safe_generate(model, prompt):
                 continue
             raise e
 
-embed_model, summ_pipe, nlp, gemini = load_models()
+embed_model, gemini = load_models()
 
 # --- DATA & INDEXING ---
 @st.cache_data
@@ -233,6 +233,7 @@ if "selected_paper" in st.session_state:
         st.rerun()
     
     with st.spinner("Summarizing..."):
+        summ_pipe = load_summarizer()
         summ = summ_pipe(p['abstract'][:4000], max_length=150, min_length=40)[0]['summary_text']
         st.success(f"### AI Summary\n{summ}")
     
